@@ -37,6 +37,18 @@ class Options(object):
       Options._instance = super(Options, cls).__new__(cls)
     return cls._instance
 
+  def Set(self, flags=None, **opts):
+    """Set the options used throughout the rfmt system.
+
+    Args:
+      flags: an optional :-) Google-style (pyglib) FLAGS object.
+      **opts: other keyword options.
+    """
+    if flags:
+      self.__dict__.update(flags.FlagValuesDict())
+    self.__dict__.update(opts)
+    self.Check()
+
   def Check(self):
     """Assertion verification for options."""
     try:

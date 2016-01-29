@@ -76,10 +76,6 @@ class FormatPolicy(object):
     pass
 
   @abc.abstractmethod
-  def FComment(self, node, comment):
-    pass
-
-  @abc.abstractmethod
   def FFunCall(self, node, expr, lparen, sublist, rparen):
     pass
 
@@ -169,9 +165,13 @@ class FormatPolicy(object):
   def FAtom(self, node, type_, text, comments):
     pass
 
+  def BreakElementLines(self, element_lines):
+    """Hook for formatting around comment-induced line breaks."""
+    return element_lines
+
   def FormatFields(self, node):
     """Format the fields of a node, returning the results in a list."""
-    # A with Format(), the results of this method are cached.
+    # As with Format(), the results of this method are cached.
     # The following assumes that id(node) is never 0---a not unreasonable
     # assumption in CPython, at least.
     if -id(node) not in self._fmt_dict:

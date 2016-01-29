@@ -26,8 +26,8 @@ import cStringIO as StringIO
 import os
 import ply.yacc as yacc
 
-import base
-import rparsetab
+from google3.third_party.R.tools.rfmt.formatter import base
+from google3.third_party.R.tools.rfmt.formatter import rparsetab
 
 
 class _RStream(object):
@@ -104,18 +104,14 @@ class _RStream(object):
 
 
 class _RComments(object):
-  """An object representing comments in R source code.
-
-  Currently, this is a minimal object comprising a list of text lines, but it's
-  possible that more sophisticated handling of comments in future will lead to
-  its elaboration.
+  """An object representing comments in R source code (abstract class).
   """
 
   def __init__(self):
     self.lines = []
 
   def __str__(self):
-    return '# ' + str(self.lines)
+    return '#' + str(self.lines)
 
   def __nonzero__(self):
     """If this object contains at least one line of text."""
@@ -124,6 +120,25 @@ class _RComments(object):
   def AppendLine(self, line):
     """Append a line of text to the comment."""
     self.lines.append(line)
+
+  def Trim(self):
+    self.lines = [ln.lstrip('\n') for ln in self.lines]
+
+
+class _RLineComments(_RComments):
+  """A class representing in-line comments.
+  """
+
+  def __str__(self):
+    return 'L' + super(_RLineComments, self).__str__()
+
+
+class _RBlockComments(_RComments):
+  """A comment that occupies entire lines and may include blank lines.
+  """
+
+  def __str__(self):
+    return 'B' + super(_RBlockComments, self).__str__()
 
 
 class RToken(object):
@@ -134,14 +149,14 @@ class RToken(object):
     self.col = col
     self.type = token_type
     self.value = value
-    self.comments = None
+    self.pre_comments = None
+    self.post_comments = None
 
   def __str__(self):
-    if not self.comments:  # Either None, or empty
-      return '(%s, %s)@(%d,%d)' % (self.type, self.value, self.line, self.col)
-    else:
-      return '(%s, %s, %s)@(%d,%d)' % (self.type, self.value, self.comments,
-                                       self.line, self.col)
+    return '(%s, %s, %s, %s)@(%d,%d)' % (self.type, self.value,
+                                         str(self.pre_comments),
+                                         str(self.post_comments),
+                                         self.line, self.col)
 
 
 class _RTokenizer(object):
@@ -172,68 +187,94 @@ class _RTokenizer(object):
       if not (c == ' ' or c == '\t' or c == '\f'):
         return c
 
-  def GetCommentLine(self, c):
-    """Read a line of comment text, ending at a new line or end of file."""
-    s = [c]
-    while True:
-      c = self.stream.GetChar()
-      if c in ('\n', 'R_EOF'):
-        return ''.join(s)
-      s.append(c)
-
-  def ProbeForComments(self, ignore_lines_in_comments, in_brace):
-    """Return any comments that appear next in the input stream.
+  def ProbeForCommentLine(self, break_on_blank_line=False):
+    """Look for a line comprising comments.
 
     Args:
-      ignore_lines_in_comments: True iff the lexer's currently ignoring
-        newlines.
-      in_brace: True iff the lexer's parsing expressions between '{' and '}'.
+      break_on_blank_line: whether to cease the search after a blank line
     Returns:
-      An RComment object containing the following comment, or None if there is
-      no such comment.
-
-    TODO(pyelland): The handling of comments in general really needs to be
-      rationalized.
+      A string comprising the line, or None if none are found.
     """
-    comments = _RComments()
-    start_col = -1
+    ws_chars = (' ', '\t', '\f')
+    le_chars = ('\n', 'R_EOF')
+    s = []
+    def NextChar(c):
+      if c:
+        s.append(c)
+      return self.stream.GetChar()
+    def Line():
+      return ''.join(s).lstrip('\n')
+    state = 1
+    c = ''
+    while True:
+      c = NextChar(c)
+      if state == 1:
+        if c == '\n' or c in ws_chars:
+          if break_on_blank_line and c == '\n':
+            break
+          if self.stream.Peek() == 'R_EOF': break
+          state = 2
+          continue
+        elif c == '#':
+          state = 3
+          continue
+        else:
+          break
+      if state == 2:
+        if c in ws_chars:
+          continue
+        elif c in le_chars:
+          return Line()
+        elif c == '#':
+          state = 3
+          continue
+        else:
+          break
+      if state == 3:
+        if c in le_chars:
+          return Line()
+        else:
+          continue
+    return None
+
+  def ProbeForComments(self, post):
+    """Look for comments before or after a token.
+
+    Args:
+      post: whether the comments occur after a token.
+    Returns:
+      An RLineComments (post = True) or RBlockComments (post = False)
+      containing the comments, or None if none are found.
+    """
+    comments = (_RLineComments if post else _RBlockComments)()
+    start_col = self.stream.col
+    hash_col = 0
+    do_reset = True
     while True:
       self.stream.Checkpoint()
-      blank_line = True
-      while True:
-        c = self.stream.GetChar()
-        if c not in (' ', '\t', '\f', '\n'): break
-        if not ignore_lines_in_comments and c == '\n':
-          if not comments or (in_brace and blank_line):
-            self.stream.Reset()
-            if comments: self.stream.UnGetChar()
-            return None if not comments else comments
-          blank_line = False
-      if c != '#' or (not ignore_lines_in_comments and
-                      self.stream.col < start_col):
-        self.stream.Reset()
+      line = self.ProbeForCommentLine(
+          break_on_blank_line=post and not hash_col)
+      if line is None:
         break
-      if not comments: start_col = self.stream.col
-      comments.AppendLine(self.GetCommentLine(''))
-    if comments:
+      if post:
+        ls_line = line.lstrip()
+        if not ls_line:
+          # Absorb trailing spaces, but don't make up a line comment
+          do_reset = hash_col > 0
+          self.stream.UnGetChar()  # Leave last CR in the stream
+          break
+        if not hash_col:
+          hash_col = start_col + len(line) - len(ls_line) + 1
+        elif len(line) - len(ls_line) + 1 < hash_col:
+          break
       self.stream.UnGetChar()
-    return None if not comments else comments
-
-  def GetBlockComment(self, c):
-    """Read a comment whose lines contain only comment text.
-
-    Args:
-      c: the first character of the comment (invariably '#').
-    Returns:
-      An RComment object containing all lines of the comment.
-    """
-    comments = _RComments()
-    while True:
-      if c != '#':
-        self.stream.UnGetChar()
-        return self.Token('COMMENT', comments)
-      comments.AppendLine(self.GetCommentLine(c))
-      c = self.SkipSpace()
+      comments.AppendLine(line)
+    if do_reset:
+      self.stream.Reset()
+    if comments:
+      return comments
+    else:
+      return None
 
   def NumericValue(self, c):
     """Read a NextToken comprising a numeric value.
@@ -350,9 +391,7 @@ class _RTokenizer(object):
     """Read the next token from the input stream."""
     c = self.SkipSpace()
     # The structure of this method follows that of the C code fairly closely;
-    # doubtless it could be factored more elegantly.c = self.SkipSpace()
-    if c == '#':
-      return self.GetBlockComment(c)
+    # doubtless it could be factored more elegantly.
     if c == 'R_EOF':
       return self.Token('END_OF_INPUT')
     if c.isdigit() or (c == '.' and self.stream.Peek().isdigit()):
@@ -455,10 +494,8 @@ class _RLexer(object):
     self.context = ['LBRACE']
     self.__IgnoreNewLines = False
     self.SavedToken = None
-    # Unlike the original R lexer, it is necessary for this object to record
-    # new lines that are skipped during e.g. scans of conditional constructs.
-    self.saved_new_lines = 0
     self.begin_token = self.tokenizer.Token('BEGIN')
+    self.saved_pre_comments = None
 
   @property
   def IgnoreNewLines(self):
@@ -491,71 +528,67 @@ class _RLexer(object):
     if self.CurContext() == 'i':
       self.context.pop()
 
-  def AddComments(self, token):
-    """Add any comments following the NextToken in the input stream."""
-    in_brace = self.CurContext() == 'LBRACE'
-    if token.type == 'COMMENT' or (in_brace and token.type == 'CR'):
-      return token
-    ignore_lines_in_comments = (self.IgnoreNewLines or
-                                self.CurContext() in ('i', '[', '('))
-    token.comments = self.tokenizer.ProbeForComments(ignore_lines_in_comments,
-                                                     in_brace)
-    return token
-
   # Non-Google standard naming is mandated by PLY.
   # pylint: disable=invalid-name
   def token(self):
-    """Return the next NextToken retrieve by the lexer."""
+    tok = self.__token()
+    return tok
+
+  def __token(self):
+    """Return the next token retrieved by the lexer."""
     # Deals with saved state from earlier scans---actual scanning is delegated
     # to ScanForToken().
-    if self.saved_new_lines > 0:  # Sic; skip one CR
-      self.saved_new_lines -= 1
-      return self.tokenizer.Token('CR')
     if self.begin_token:
       token, self.begin_token = self.begin_token, None
-      return token
     else:
       token = self.ScanForToken()
     if token.type == 'END_OF_INPUT':
+      if token.pre_comments:
+        anchor = self.tokenizer.Token('SYMBOL', '__END_COMMENT_ANCHOR__')
+        anchor.pre_comments = token.pre_comments
+        return anchor
       return None
-    return self.AddComments(token)
+    token.post_comments = self.tokenizer.ProbeForComments(post=True)
+    return token
 
   def ScanForToken(self):
-    """Actually scan for the next NextToken in the input stream."""
+    """Actually scan for the next token in the input stream."""
     while True:
       if self.SavedToken:
-        tok = self.SavedToken
-        if tok.type == 'COMMENT':
-          self.SavedToken = self.tokenizer.Token('CR')
-        else:
-          self.SavedToken = None
+        tok, self.SavedToken = self.SavedToken, None
       else:
+        if self.saved_pre_comments is not None:
+          pre_comments = self.saved_pre_comments
+          self.saved_pre_comments = None
+        else:
+          pre_comments = self.tokenizer.ProbeForComments(post=False)
         tok = self.tokenizer.NextToken()
+        tok.pre_comments = pre_comments
       if not(tok.value == '\n' and
              (self.IgnoreNewLines or self.CurContext() in ('[', '('))):
         break
+      if tok.value == '\n' and tok.pre_comments:
+        self.saved_pre_comments = tok.pre_comments
     if tok.value == '\n':
-      if self.CurContext() == 'i':
+      self.saved_pre_comments = tok.pre_comments
+      if self.CurContext() == 'i':  # In 'if' context
         while tok.value == '\n':
-          self.saved_new_lines += 1
           tok = self.tokenizer.NextToken()
+        tok.pre_comments = self.saved_pre_comments
+        self.saved_pre_comments = None
         if tok.type == 'RBRACE' or tok.type == ')' or tok.type == ']':
-          self.saved_new_lines = 0
           while self.CurContext() == 'i':
             self.IfPop()
           self.context.pop()
           return tok
         if tok.value == ',':
-          self.saved_new_lines = 0
           self.IfPop()
           return tok
         if tok.type == 'ELSE':
-          self.saved_new_lines = 0
           self.IgnoreNewLines = True
           self.IfPop()
           return tok
         else:
-          self.saved_new_lines -= 1
           self.IfPop()
           self.SavedToken = tok
           return self.tokenizer.Token('CR')
@@ -563,10 +596,8 @@ class _RLexer(object):
     if tok.type in ('+', '-', '*', '/', '^', 'LT', 'LE', 'GE', 'GT', 'EQ',
                     'NE', 'OR', 'AND', 'OR2', 'AND2', 'SPECIAL', 'FUNCTION',
                     'WHILE', 'REPEAT', 'FOR', 'IN', '?', '!', '-', ':',
-                    '!', '$', '@', 'LEFT_ASSIGN', 'RIGHT_ASSIGN', 'EQ_ASSIGN'):
+                    '$', '@', 'LEFT_ASSIGN', 'RIGHT_ASSIGN', 'EQ_ASSIGN'):
       self.IgnoreNewLines = True
-    elif tok.type == 'COMMENT':
-      self.SavedToken = self.tokenizer.Token('CR')
     elif tok.type == 'IF':
       self.IfPush()
       self.IgnoreNewLines = True
@@ -778,10 +809,10 @@ def _MakeAtom(p, i):
     i: the index of a terminal token in the production from which the node is
       to be constructed.
   Returns:
-    A parse tree node with the token's type, value and any trailing comment.
+    A parse tree node with the token's type, value and attached comments.
   """
   tok = p.slice[i]
-  return Atom(tok.type, tok.value, tok.comments)
+  return Atom(tok.type, tok.value, (tok.pre_comments, tok.post_comments))
 
 
 def ParseTreeFor(stream_input, **parse_args):
@@ -823,7 +854,7 @@ def p_exprlist(p):
               | expr_or_assign CR exprlist
               | expr_or_assign ';' exprlist
   """
-  p.lexer.IgnoreNewLines = False
+  p.lexer.IgnoreNewLinesFromParser(False)
   if len(p) == 1:
     p[0] = []
   elif len(p) == 2:
@@ -1032,7 +1063,6 @@ def p_expr_subscript(p):
 
 
 def p_error(p):
-  print p
   if p is None:
     _RaiseRSyntaxError('Unexpected end of file')
   else:

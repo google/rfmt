@@ -16,7 +16,7 @@
 
 import math
 
-import base
+from google3.third_party.R.tools.rfmt.formatter import base
 options = base.Options()  # Shorthand for convenient access
 
 
@@ -66,11 +66,16 @@ class Console(object):
     """
     self.String(' ' * n)
 
-  def NewLine(self):
-    """Start a new line on the console, beginning at the current margin."""
+  def NewLine(self, indent=True):
+    """Start a new line, optionally beginning at the current margin.
+
+    Args:
+      indent: whether to preserve the current margin after the new line.
+    """
     self.String('\n')
     self._h_pos = 0
-    self.Space(self.margin)
+    if indent:
+      self.Space(self.margin)
 
   def NewLineSpace(self, n):
     """Start a new line, indenting from the current margin.
@@ -109,8 +114,8 @@ class PrintDescriptionConsole(object):
   def Space(self, n):
     self.String('<spc(%s)>' % n)
 
-  def NewLine(self):
-    self.String('<NL>')
+  def NewLine(self, indent=True):
+    self.String('<NL%s>' % ('i' * indent))
 
   def NewLineSpace(self, n):
     self.NewLine()
@@ -138,8 +143,8 @@ class LayoutElement(object):
     return lambda console: console.String(s)
 
   @staticmethod
-  def NewLine():
-    return lambda console: console.NewLine()
+  def NewLine(indent=True):
+    return lambda console: console.NewLine(indent)
 
   @staticmethod
   def NewLineSpace(n):

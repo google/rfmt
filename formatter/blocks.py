@@ -15,8 +15,8 @@
 """The block language system for the R language formatter."""
 
 import re
-import base
-import support
+from google3.third_party.R.tools.rfmt.formatter import base
+from google3.third_party.R.tools.rfmt.formatter import support
 _options = base.Options()  # Shorthand for convenient access
 
 
@@ -146,22 +146,22 @@ class LineBlock(CompositeLayoutBlock):
     super(LineBlock, self).__init__(elements)
 
   def DoOptLayout(self, rest_of_line):
-    # Proceed right-to-left through the elements of this block, successively
-    # adding the layout of each element to the continuation. Break at each
-    # element (if any) that mandates a newline.
-    broken_lines = []  # Collect the lines formed any breaks.
-    for elt in self.elements[::-1]:
-      if elt.is_breaking:
-        if rest_of_line is not None: broken_lines.append(rest_of_line)
-        rest_of_line = None
-      rest_of_line = elt.OptLayout(rest_of_line)
-    if not broken_lines: return rest_of_line
-    broken_lines.append(rest_of_line)
-    # Full layout is either a single line, or a stack comprising
-    # the collection of lines.
-    soln = support.VSumSolution(broken_lines[::-1])
-    # Add a cost for any mandated line breaks.
-    return soln.PlusConst(_options.cb * (len(broken_lines) - 1))
+    if not self.elements: return rest_of_line
+    element_lines = [[]]
+    for i, elt in enumerate(self.elements):
+      element_lines[-1].append(elt)
+      if i < len(self.elements) - 1 and elt.is_breaking:
+        element_lines.append([])
+    if len(element_lines) > 1:
+      element_lines = _options.format_policy.BreakElementLines(element_lines)
+    line_solns = []
+    for i, ln in enumerate(element_lines):
+      ln_layout = None if i < len(element_lines) - 1 else rest_of_line
+      for elt in ln[::-1]:
+        ln_layout = elt.OptLayout(ln_layout)
+      line_solns.append(ln_layout)
+    soln = support.VSumSolution(line_solns)
+    return soln.PlusConst(_options.cb * (len(line_solns) - 1))
 
 
 def IndentBlock(element, indent=None):
@@ -173,6 +173,7 @@ def IndentBlock(element, indent=None):
 class ChoiceBlock(CompositeLayoutBlock):
   """A block which contains alternate layouts of the same content."""
 
+  # Note: All elements of a ChoiceBlock are breaking, if any are.
   def __init__(self, elements):
     super(ChoiceBlock, self).__init__(elements)
 
@@ -209,6 +210,10 @@ class StackBlock(MultBreakBlock):
     soln = support.VSumSolution([e.OptLayout(None)
                                  for e in self.elements[:-1]] +
                                 [self.elements[-1].OptLayout(rest_of_line)])
+    # Under some odd circumstances involving comments, we may have a degenerate
+    # solution.
+    if soln is None:
+      return rest_of_line
     # Add the cost of the line breaks between the elements.
     return soln.PlusConst(_options.cb * self.break_mult *
                           max(len(self.elements) - 1, 0))
@@ -290,36 +295,47 @@ class WrapBlock(MultBreakBlock):
 class VerbBlock(LayoutBlock):
   """A block that prints out several lines of text verbatim."""
 
-  def __init__(self, text, is_breaking=True):
+  def __init__(self, lines, is_breaking=True, first_nl=False):
     super(VerbBlock, self).__init__(is_breaking)
-    self.lines = text.split('\n')
+    self.lines = lines
+    self.first_nl = first_nl
 
   def __repr__(self):
     return self.lines[0][:3] + '...' + self.lines[-1][-3:]
 
   def DoOptLayout(self, rest_of_line):
-    span = len(self.lines[-1])
+    # The solution for this block is essentially that of a TextBlock(''), with
+    # an abberant layout calculated as follows.
     l_elts = []
-    for ln in self.lines:
+    for i, ln in enumerate(self.lines):
+      if i > 0 or self.first_nl:
+        l_elts.append(support.LayoutElement.NewLine())
       l_elts.append(support.LayoutElement.String(ln))
-      l_elts.append(support.LayoutElement.NewLine())
-    layout = support.Layout(l_elts[:-1])  # Drop the last NewLine()
-    # This class of block is essentially exempt from cost calculations, since
-    # its formatting is fixed.
-    return support.Solution([0], [span],
-                            [0], [0], [layout]).WithRestOfLine(rest_of_line)
+    layout = support.Layout(l_elts)
+    span = 0
+    return support.Solution([0, _options.m0 - span, _options.m1 - span],
+                            [span] * 3,
+                            [0, 0, (_options.m1 - _options.m0) * _options.c0],
+                            [0, _options.c0, _options.c0 + _options.c1],
+                            [layout] * 3)
 
 
-def CommentBlock(text, comment):
-  """A composite block containing a text string and associated line comment."""
-  comment = re.sub(r'^#+\s*', ' ', comment,
-                   flags=re.MULTILINE).replace('\n', '')
-  tbs = map(TextBlock, comment.split())
-  if not tbs:
-    cb = LineBlock([TextBlock(text), IndentBlock(TextBlock('#'))])
+def LineCommentBlock(comments):
+  inl_words = ' '.join(re.sub(r'^\s*#+\s*', ' ', ln)
+                       for ln in comments.lines).split()
+  if not inl_words:
+    block = IndentBlock(TextBlock('#'))
   else:
-    cb = LineBlock([TextBlock(text),
-                    IndentBlock(WrapBlock(tbs, break_mult=_options.adj_comment,
-                                          prefix='# '))])
-  cb.is_breaking = True
-  return cb
+    block = IndentBlock(WrapBlock(map(TextBlock, inl_words),
+                                  break_mult=_options.adj_comment, prefix='# '))
+  block.is_breaking = True
+  return block
+
+
+def BlockCommentBlock(comments):
+  stripped_lines = [re.sub(r'^\s*#', '', ln) for ln in comments.lines]
+  block_lines = ['#' + ln if re.match(r'\s*#', comments.lines[i]) else ln
+                 for i, ln in enumerate(stripped_lines)]
+  block = VerbBlock(block_lines)
+  block.is_breaking = True
+  return block

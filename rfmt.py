@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 #  Copyright 2015 Google Inc. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,19 +18,25 @@ Command line help:
 
 """
 
+
+import argparse
 import cStringIO
-import os.path
+import os
 import re
 import shutil
 import sys
-import argparse
 
-from formatter import base
-from formatter import google_format
-from formatter import r_language
+from google3.third_party.R.tools.rfmt.formatter import base
+from google3.third_party.R.tools.rfmt.formatter import default_format_policy
+from google3.third_party.R.tools.rfmt.formatter import r_language
 
 
 # Command line argument configuration.
+def str2bool(v):
+  """Bodge around strange handling of boolean values in ArgumentParser."""
+  return v.lower() in ('yes', 'true', 't', '1')
+
+
 ap = argparse.ArgumentParser(description='R source code formatter',
                              formatter_class=argparse
                              .ArgumentDefaultsHelpFormatter)
@@ -52,16 +56,22 @@ ap.add_argument('-cb', '--costb', default=2, type=float,
                 help='cost per line-break', dest='cb')
 ap.add_argument('-i', '--indent', default=2, type=int,
                 help='spaces per indent', dest='ind')
-ap.add_argument('--adj_comment', default=.25, type=float,
+ap.add_argument('--adj_comment', default=.5, type=float,
                 help='break cost adjustment in comments', metavar='ADJC')
 ap.add_argument('--adj_flow', default=.3, type=float,
                 help='break cost adjustment in flow constructs', metavar='ADJF')
-ap.add_argument('--adj_call', default=.25, type=float,
+ap.add_argument('--adj_call', default=.5, type=float,
                 help='break cost adjustment in function calls', metavar='ADJCL')
-ap.add_argument('--adj_arg', default=40, type=float,
+ap.add_argument('--adj_arg', default=5, type=float,
                 help='break cost adjustment in arguments', metavar='ADJA')
 ap.add_argument('--cpack', default=1e-3, type=float,
                 help='cost (per element) for packing justified layouts')
+ap.add_argument('-fb', '--force_brace', default=True, type=str2bool,
+                dest='force_brace', help='Mandate braces in flow constructs',
+                metavar='FB')
+ap.add_argument('-se', '--space_arg_eq', default=True, type=str2bool,
+                dest='space_arg_eq', help='Mandate spaces around equals sign '
+                'in argument lists', metavar='SE')
 
 
 def main():
@@ -69,8 +79,13 @@ def main():
   remove_backup = False
   try:
     options = base.Options()
+    init_path = init_path = os.path.expanduser(os.environ.get('RFMTRC',
+                                                              '~/.rfmtrc'))
+    if os.path.exists(init_path):
+      with open(init_path) as fp:
+        ap.parse_args(' '.join(fp).split(), namespace=options)
+    ap.parse_args(os.environ.get('RFMTOPTS', '').split(), namespace=options)
     ap.parse_args(namespace=options)
-    options.Check()
     if options.file:  # Input is from a file
       f_path = os.path.abspath(os.path.expanduser(options.file))
       try:
@@ -91,14 +106,18 @@ def main():
           raise base.Error('Cannot copy file "%s" to "%s"' % (f_path, bak_path))
       print >>sys.stderr, 'Formatting file "%s"' % options.file
     else:
-      f_input = sys.stdin
+      # Read the whole of stdin as a string, to allow for seeks during lexing
+      # when driving the formatter through a pipe (usually, from an editor).
+      f_input = sys.stdin.read()
     # Parse source.
     ptree = r_language.ParseTreeFor(f_input)
     if not ptree.exprlist.elements:
       print >>sys.stderr, 'Empty file: "%s"' % options.file
       sys.exit(0)
     # Generate blocks from parse tree.
-    blocks = google_format.GoogleFormatPolicy().BlocksFor(ptree)
+    # First, store the format policy to allow hooks to retrieve it.
+    options.format_policy = default_format_policy.DefaultFormatPolicy()
+    blocks = options.format_policy.BlocksFor(ptree)
     # Have generated blocks calculate optimal layout and print on
     # string buffer. (Use of string buffer facilitates trailing space
     # removal below.)
@@ -124,7 +143,7 @@ def main():
       os.remove(bak_path)
     sys.exit(1)
   except IOError:  # These are usually the result of misuse of the command.
-    print FLAGS.MainModuleHelp()
+    ap.print_help()
 
 
 # Conditional script stanza
