@@ -15,8 +15,8 @@
 """The block language system for the R language formatter."""
 
 import re
-from google3.third_party.R.tools.rfmt.formatter import base
-from google3.third_party.R.tools.rfmt.formatter import support
+from formatter import base
+from formatter import support
 _options = base.Options()  # Shorthand for convenient access
 
 

@@ -26,8 +26,8 @@ import cStringIO as StringIO
 import os
 import ply.yacc as yacc
 
-from google3.third_party.R.tools.rfmt.formatter import base
-from google3.third_party.R.tools.rfmt.formatter import rparsetab
+from formatter import base
+from formatter import rparsetab
 
 
 class _RStream(object):

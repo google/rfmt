@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 #  Copyright 2015 Google Inc. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,9 +27,9 @@ import re
 import shutil
 import sys
 
-from google3.third_party.R.tools.rfmt.formatter import base
-from google3.third_party.R.tools.rfmt.formatter import default_format_policy
-from google3.third_party.R.tools.rfmt.formatter import r_language
+from formatter import base
+from formatter import default_format_policy
+from formatter import r_language
 
 
 # Command line argument configuration.
@@ -72,6 +73,8 @@ ap.add_argument('-fb', '--force_brace', default=True, type=str2bool,
 ap.add_argument('-se', '--space_arg_eq', default=True, type=str2bool,
                 dest='space_arg_eq', help='Mandate spaces around equals sign '
                 'in argument lists', metavar='SE')
+ap.add_argument('-q', '--quiet', default=False, type = str2bool,
+                dest='quiet', help='Suppress output marking progress')
 
 
 def main():
@@ -104,7 +107,8 @@ def main():
         except Exception:
           f_input.close()
           raise base.Error('Cannot copy file "%s" to "%s"' % (f_path, bak_path))
-      print >>sys.stderr, 'Formatting file "%s"' % options.file
+      if not options.quiet:
+        print >>sys.stderr, 'Formatting file "%s"' % options.file
     else:
       # Read the whole of stdin as a string, to allow for seeks during lexing
       # when driving the formatter through a pipe (usually, from an editor).
@@ -130,8 +134,9 @@ def main():
       try:
         with open(f_path, 'w') as f_output:
           print >>f_output, format_result
-          print >>sys.stderr, ('Formatting of file "%s" complete' %
-                               options.file)
+          if not options.quiet:
+            print >>sys.stderr, ('Formatting of file "%s" complete' %
+                                 options.file)
           remove_backup = False
       except IOError:
         raise base.Error('Cannot write to file "%s"' % f_path)

@@ -16,7 +16,7 @@
 
 import math
 
-from google3.third_party.R.tools.rfmt.formatter import base
+from formatter import base
 options = base.Options()  # Shorthand for convenient access
 
 
