@@ -27,9 +27,9 @@ import re
 import shutil
 import sys
 
-from formatter import base
-from formatter import default_format_policy
-from formatter import r_language
+import base
+import default_format_policy
+import r_language
 
 
 # Command line argument configuration.
