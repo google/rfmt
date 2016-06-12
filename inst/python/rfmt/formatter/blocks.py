@@ -207,6 +207,7 @@ class StackBlock(MultBreakBlock):
     # the final element is composed with the continuation provided---all the
     # others see an empty continuation ("None"), since they face the end of
     # a line.
+    if not self.elements: return rest_of_line
     soln = support.VSumSolution([e.OptLayout(None)
                                  for e in self.elements[:-1]] +
                                 [self.elements[-1].OptLayout(rest_of_line)])
@@ -313,11 +314,15 @@ class VerbBlock(LayoutBlock):
       l_elts.append(support.LayoutElement.String(ln))
     layout = support.Layout(l_elts)
     span = 0
-    return support.Solution([0, _options.m0 - span, _options.m1 - span],
-                            [span] * 3,
-                            [0, 0, (_options.m1 - _options.m0) * _options.c0],
-                            [0, _options.c0, _options.c0 + _options.c1],
-                            [layout] * 3)
+    sf = support.SolutionFactory()
+    if _options.m0 > 0:  # Prevent incoherent solutions
+      sf.Append(0, span, 0, 0, layout)
+    # _options.m1 == 0 is absurd
+    sf.Append(_options.m0 - span, span, 0, _options.c0, layout)
+    sf.Append(_options.m1 - span, span,
+              (_options.m1 - _options.m0) * _options.c0,
+              _options.c0 + _options.c1, layout)
+    return sf.MkSolution()
 
 
 def LineCommentBlock(comments):

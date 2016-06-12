@@ -1,4 +1,4 @@
-"""A very rudimentary integration of rfmt into vim.
+"""Rudimentary integration of rfmt into vim.
 
  - Add to your .vimrc:
    let rfmt_executable = "<path-to-rfmt-executable>"

@@ -1,0 +1,12 @@
+Package: rfmt
+Version: 1.0
+Date: 2016-01-01
+Title: Formatting R source code
+Authors@R: person("Phillip", "Yelland", role = c("aut", "cre"),
+                  email = "phillip.yelland@gmail.com")
+Depends:
+Suggests:
+    NA
+Description: NA
+License: NA
+RoxygenNote: 5.0.1

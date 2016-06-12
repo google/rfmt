@@ -1,0 +1,15 @@
+URL: http:// # Update when OSS push is completed
+Version: 1.0
+License: Apache 2.0
+
+Description:
+The file 'rfmt.py' and its associated package, 'formatter' comprise a
+stand-alone code formatter for the  R (http://www.r-project.org/) programming
+language, in the same mold as gofmt (https://golang.org/cmd/gofmt/) tool
+for Go, and clang-format (http://clang.llvm.org/docs/ClangFormat.html) for
+C/C++.
+
+Local Modifications:
+- rfmt.py, formatter/base.py:
+  Adaptations to use google app, FLAGS functionality, rather than Python's
+  standard argparse module.
