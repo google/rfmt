@@ -16,10 +16,10 @@
 
 from contextlib import contextmanager
 
-from formatter import base
-from formatter import blocks
-from formatter import format_policy
-from formatter import r_language
+import base
+import blocks
+import format_policy
+import r_language
 
 _options = base.Options()  # Shorthand for convenient access
 

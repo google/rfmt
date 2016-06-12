@@ -15,8 +15,8 @@
 """The block language system for the R language formatter."""
 
 import re
-from formatter import base
-from formatter import support
+import base
+import support
 _options = base.Options()  # Shorthand for convenient access
 
 

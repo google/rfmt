@@ -20,7 +20,7 @@ try:
   stdout, stderr = p.communicate(input=text)
   if stderr:
     print stderr
-  elif stdout:
+  if stdout:
     lines = stdout.split('\n')
     sequence = difflib.SequenceMatcher(None, vim.current.buffer, lines)
     for op in reversed(sequence.get_opcodes()):

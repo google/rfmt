@@ -16,7 +16,7 @@
 
 import math
 
-from formatter import base
+import base
 options = base.Options()  # Shorthand for convenient access
 
 
