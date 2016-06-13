@@ -27,9 +27,7 @@ import re
 import shutil
 import sys
 
-from formatter import base
-from formatter import default_format_policy
-from formatter import r_language
+from rfmt import base, default_format_policy, r_language
 
 
 # Command line argument configuration.
@@ -67,7 +65,7 @@ ap.add_argument('-q', '--quiet', default=False, type = str2bool,
                 dest='quiet', help='Suppress progress reports, confirmations, '
                 'etc.')
 ap.add_argument('--adj_comment', default=.5, type=float,
-                help='break cost adjustment in comments', metavar='ADJC')
+                help='break cost adjustment in inline comments', metavar='ADJC')
 ap.add_argument('--adj_flow', default=.3, type=float,
                 help='break cost adjustment in flow constructs', metavar='ADJF')
 ap.add_argument('--adj_call', default=.5, type=float,

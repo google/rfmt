@@ -1,3 +1,4 @@
+## Not run:
 new.data <- new.data[,object$vars$all,drop = FALSE]
 
 if(others > 0 && others < 10) { object$model <- gsub("parm1", # Alter model in accordance with new data
@@ -18,3 +19,4 @@ Z <- .C("forecast", # See src/top.c
                 pred = double(nrow(new.data)),  
                     output = character(1),
                         PACKAGE = "test"      )
+## End(**Not run**)

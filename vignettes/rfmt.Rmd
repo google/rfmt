@@ -1,19 +1,16 @@
----
-title: "**rfmt**: A new formatter for R"
-author: "Phillip Yelland"
-date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Vignette Title}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
----
+<!--
+%\VignetteEngine{knitr::rmarkdown}
+%\VignetteIndexEntry{rfmt - A new formatter for R}
+-->
 
 # **rfmt**: A new formatter for R
 
-The **rfmt** package is intended to improve automatically the formatting of R code to aid readability. It shares many of the objectives of the **formatR** package, though with its more sophisticated layout algorithm (documented in [this technical report](http://research.google.com/pubs/pub44667.html)) and flexible approach to code formatting (described below), it aims to produce more ``pleasing'' results.
+The **rfmt** package is intended to improve automatically the formatting of R code to aid readability. It shares many of the objectives of the **formatR** package, though with its more sophisticated layout algorithm (documented in [this technical report](http://research.google.com/pubs/pub44667.html), also included in the package documentation) and flexible approach to code formatting (described below), it aims to produce more ``aesthetically appealing'' results.
 
 ## Installation
+
+----
+_To be completed_
 
 Like all R packages, **rfmt** is available from [CRAN](http://cran.rstudio.com/package=rfmt), and can be installed simply using R's `install.packages` function:
 
@@ -21,6 +18,7 @@ Like all R packages, **rfmt** is available from [CRAN](http://cran.rstudio.com/p
 install.packages("rfmt")
 library(rfmt)
 ```
+----
 
 If you'd like to download the latest development version of **rfmt**, it's 
 to be found in this [Google repository on GitHub](https://github.com/google/rfmt). To install from GitHub, either check out the repository and install from source using `install.packages` or install directly using R's [devtools](https://cran.r-project.org/web/packages/devtools/index.html) package:
@@ -33,16 +31,16 @@ library(rfmt)
 
 ### Python
 
-Unlike the majority of R packages, much of **rfmt** is implemented in the [Python](https://www.python.org/) programming language. Unlike R, Python is reasonably well suited to the sort of fine-grained iterative processing required in **rfmt**'s layout algorithms, and there are a selection of compiler generators in Python the support the analysis of R code necessary for proper layout. Generally, package implementors turn to C or C++ to circumvent these an similar shortcomings in R, but we found it much easier to rework our formatting algorithms in Python than in C/C++. This is important in code formatting, which is an inherently subjective exercise; in the last analysis, the only real way of validating the output of a formatter is to present it to prospective users, and to address any objections by amending the program.
+Unlike the majority of R packages, much of **rfmt** is implemented in the [Python](https://www.python.org/) programming language. In contrast to R, Python is reasonably well suited to the sort of fine-grained iterative processing required in **rfmt**'s layout algorithms, and there are a selection of compiler generators in Python the support the analysis of R code necessary for proper layout. Generally, package implementors turn to C or C++ to circumvent these and similar shortcomings in R, but we found it much easier to rework our formatting algorithms in Python than in C/C++. Ease of rework is important in code formatting, which is an inherently subjective exercise; in the last analysis, the only real way of validating the output of a formatter is to present it to prospective users, and to address any objections by amending the program.
 
-Consequently, to use **rfmt**, you'll need to have a Python (v. 2.7) installation available (in fact the library will complain if it's unable to find one). This is usually the case, but if it isn't, you can download one yourself from [python.org](https://www.python.org/downloads/release/python-2711/).
+Consequently, to use **rfmt**, you'll need to have a Python (v. 2.7 or later) installation available (in fact the library will complain if it's unable to find one). This is usually the case, but if it isn't, you can download one yourself from [python.org](https://www.python.org/downloads/release/python-2711/).
 
 ## Usage
 
 Once installed, you can use **rfmt** in three ways:
 
 1. From R, format a single file using the `rfmt()` function, or format all source files in a directory with the `rfmtdir()` function.
-2. On systems with the [bash shell](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) (in particular, Linux and OS/X), the `bash_install_rfmt()` function in R makes the command `rfmt` available from the command line.
+2. On systems (in particular, Linux and OS/X, or Windows with [Cygwin](https://www.cygwin.com/)) with the [bash shell](https://en.wikipedia.org/wiki/Bash_(Unix_shell) or [C shell](https://en.wikipedia.org/wiki/C_shell), the `install_rfmt_shell()` function in R makes the command `rfmt` available from the command line.
 3. You can use **rfmt** to layout code as you edit in `vim` or `emacs`.
 
 These choices are described in detail in the following sections.
@@ -52,6 +50,7 @@ These choices are described in detail in the following sections.
 The function `rfmt()` allows you to format a file, a string or the contents of the clipboard. For example, the file `test.R`, supplied with the package, contains the following (rather eccentrically) formatted code:
 
 ```r
+## Not run:
 new.data <- new.data[,object$vars$all,drop = FALSE]
 
 if(others > 0 && others < 10) { object$model <- gsub("parm1", # Alter model in accordance with new data
@@ -72,6 +71,7 @@ Z <- .C("forecast", # See src/top.c
                 pred = double(nrow(new.data)),    
                     output = character(1),
                         PACKAGE = "test"      )
+## End(**Not run**)
 ```
 
 The following code copies this file to a temporary location, and calls `rfmt()` to format it, printing the result to the console:
@@ -86,6 +86,7 @@ cat(readLines(fn), sep = "\n")
 The result you see should closely resemble the following:
 
 ```r
+## Not run:
 new.data <- new.data[, object$vars$all, drop = FALSE]
 
 if (others > 0 && others < 10) {
@@ -101,15 +102,16 @@ Z <- .C("forecast",  # See src/top.c
         as.character(data.fn), as.character(object$names),
         as.character(object$data), as.character(object$model),
         pred = double(nrow(new.data)), output = character(1), PACKAGE = "test")
+## End(**Not run**)
 ```
 
-You can provide a string to the formatter directly using the `text` argument of `rfmt()`; with neither file name nor text provided, the function formats the contents of the system clipboard. In both these cases, the output of the formatter is printed to the console and returned (invisibly) as a `character` vector.
+You can provide a string to the formatter directly using the `text` argument of `rfmt()`; with neither file name nor text provided, the function formats the contents of the system clipboard. In both these cases, the output of the formatter is printed to the console and returned (invisibly, in the latter case) as a `character` vector.
 
 To format all the R source files in a directory, use the `rfmt_dir()` function. This searches a directory for file names that conform to a given pattern (by default, files with extensions ".R", ".r", ".S" or ".s") and formats them each in turn.
 
 ### From the command line
 
-It's also possible to use it directly from the command line. To facilitate this, the package provides a function `bash_install_rfmt` that makes the formatter available as the [bash shell](https://en.wikipedia.org/wiki/Bash_(Unix_shell)) command `rfmt` for use on Linux and OS/X systems (provided you're using the bash shell, of course). Simply invoking `install_rfmt_bash()` will add the appropriate definitions to your `.bashrc` file. Opening a new shell or `source`ing your `.bashrc` thereafter will allow you to use the command `rfmt fn1 ... fnn` to format the files `fn1` ... `fnn`.
+It's also possible to use it directly from the command line. To facilitate this, the package provides a function `install_rfmt_shell()` that (by default) makes the formatter available as the [bash shell](https://en.wikipedia.org/wiki/Bash_(Unix_shell) command `rfmt` for use on Linux and OS/X systems (provided you're using the bash shell, of course). Simply invoking `install_rfmt_shell()` will add the appropriate definitions to your `.bashrc` file. Opening a new shell or `source`ing your `.bashrc` thereafter will allow you to use the command `rfmt fn1 ... fnn` to format the files `fn1` ... `fnn`. (Note that by supplying the argument `shellrc = ".cshrc"` to `install_rfmt_shell()`, you can provide `rfmt` to the [C shell](https://en.wikipedia.org/wiki/C_shell), too.)
 
 ### Editor integration
 
@@ -117,7 +119,7 @@ If you're a user of the [Emacs](https://www.gnu.org/software/emacs/) or [Vim](ht
 
 ## Formatting options
 
-A number of aspects of the formatter's behavior may be affected by setting options in R, on the command line, in the environment variable `RFMTOPTS` or in an initialization file (by default, `~/.rfmtrc`, or a file named by the environment variable `RFMTRC`).
+A number of aspects of the formatter's behavior may be affected by setting options in R (using the function `option_rfmt()`), on the command line, in the environment variable `RFMTOPTS` or in an initialization file (by default, `~/.rfmtrc`, or a file named by the environment variable `RFMTRC`).
 
 Option        |  Default value  | Description
 --------------|-----------------|------------------
@@ -126,16 +128,17 @@ margin0       |  0              | Position of the first (_soft_) right margin
 margin1       |  80             | Position of the second (_hard_) right margin
 cost0         |  0.05           | Cost (per character) beyond margin 0
 cost1         |  100            | Cost (per character) beyond margin 1
-costb         |  2              |
-indent        |  2              |
-adj.comment   |  0.5            |
-adj.flow      |  0.3            |
-adj.call      |  0.5            |
-adj.arg       |  5              |
-cpack         |  0.001          |
-force.brace   |  0              |
-space.arg.eq  |  1              |
-quiet         |  1              |
+costb         |  2              | Cost per line break
+indent        |  2              | Number of spaces for each indent
+force.brace   |  0              | Ensure that control flow constructs have braces
+space.arg.eq  |  1              | Ensure spaces around equals signs in arguments
+quiet         |  1              | Suppress all diagnostic messages
+adj.comment   |  0.5            | Adjustment to line break cost in inline comments
+adj.flow      |  0.3            | Adjustment to line break cost in control flow constructs
+adj.call      |  0.5            | Adjustment to line break cost in function calls
+adj.arg       |  5              | Adjustment to line break cost in argument expressions
+cpack         |  0.001          | Cost used to pack elements in justified layouts
+
 
 
 

@@ -25,7 +25,7 @@
 }
 
 .path.rfmt <- function() {
-  system.file("python", "rfmt", "rfmt.py", package = "rfmt")
+  system.file("python", "rfmt.py", package = "rfmt")
 }
 
 .call.rfmt <- function(opts, source.files) {
@@ -263,7 +263,8 @@ cyg.munge <- function(fn) {
   fn
 }
 
-#' Make the \dQuote{\code{rfmt}} command available to the *nix shell.
+#' Make the \dQuote{\code{rfmt}} command available to the (\code{csh}-style) 
+#' *nix shell.
 #' 
 #' @param shellrc a string indicating shell initialization file in the user's 
 #' home directory (by default, \code{.bashrc}, the initialization file for the
@@ -273,10 +274,9 @@ cyg.munge <- function(fn) {
 #' \dQuote{\code{C:/Cygwin}} if not provided).
 #' @export
 install_rfmt_shell <- function(shellrc = ".bashrc", cygwin.path = NULL) {
-  .edit.init.file(
-      shellrc, c("# rfmt: R source code formatter",
-                sprintf("alias rfmt=\"python '%s'\"", cyg.munge(.path.rfmt()))), 
-      cygwin.path)
+  .edit.init.file(shellrc, c("# rfmt: R source code formatter",
+                             sprintf("alias rfmt=\"python '%s'\"",
+                                     cyg.munge(.path.rfmt()))), cygwin.path)
 }
 
 #' Make the formatter available to Emacs, running under *nix, or 
@@ -294,7 +294,7 @@ install_rfmt_emacs <- function(emacsrc = ".emacs", key = "C-x C-i",
   emacs.addend <- c(
     ";;; rfmt: R source code formatter",
     sprintf('(add-to-list \'load-path "%s")', 
-        cyg.munge(system.file("editors", package = "rfmt"))),
+        cyg.munge(system.file("elisp", package = "rfmt"))),
     sprintf('(setq rfmt-executable "%s")', cyg.munge(.path.rfmt())),
     "(require 'rfmt-emacs)",
     sprintf('(global-set-key (kbd "%s") \'rfmt-buffer)', key))
@@ -313,7 +313,7 @@ install_rfmt_emacs <- function(emacsrc = ".emacs", key = "C-x C-i",
 #' @export
 install_rfmt_vim <- function(vimrc = ".vimrc", key = "<C-I>", 
     cygwin.path = NULL) {
-  rfmt.vim <- system.file("editors", "rfmt_vim.py", package = "rfmt")
+  rfmt.vim <- system.file("python", "rfmt_vim.py", package = "rfmt")
   if ((info <- Sys.info())["sysname"] == "Windows") {
     # On Windows, unfortunately, vim has inordinate problems dealing with
     # spaces in file paths; make a local copy of the rfmt executiong script as a
