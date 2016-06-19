@@ -1,13 +1,9 @@
-rfmt
-====
+# **rfmt**: A code formatter for R
 
-The file `rfmt.py` and its associated package, `formatter` comprise a
-stand-alone code formatter for the [R](http://www.r-project.org/) programming
-language, in the same mold as [**gofmt**](https://golang.org/cmd/gofmt/) tool
+The **rfmt** package is intended to improve the formatting of R code to aid readability (in the same mold as [**gofmt**](https://golang.org/cmd/gofmt/) tool
 for Go, and [**clang-format**](http://clang.llvm.org/docs/ClangFormat.html) for
-C/C++.
+C/C++). It shares many of the objectives of the [**formatR**](https://cran.r-project.org/web/packages/formatR/index.html) package, though with its more sophisticated layout algorithm (documented in [this technical report](http://research.google.com/pubs/pub44667.html), also included in the package documentation) and flexible approach to code formatting, it aims to produce more ''aesthetically appealing'' results.
 
-To use the formatter, you'll need Python 2.7 or later, and you'll need to
-ensure that David Beazley's [`ply` package](http://www.dabeaz.com/ply/) is
-[accessible to Python](https://docs.python.org/2/using/cmdline.html#envvar-PYTHONPATH).
-Help for command line usage is available by running `python rfmt.py --help`.
+To use **rfmt**, you'll need to have a Python (v. 2.7 or later) installation available. If this is not the case, you can download one yourself from [python.org](https://www.python.org/downloads/release/python-2711/).
+
+The implementation of the formatter relies heavily on David Beazley's [`ply` package](http://www.dabeaz.com/ply/), a copy of which is supplied with the package.
