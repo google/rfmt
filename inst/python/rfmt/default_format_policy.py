@@ -16,10 +16,10 @@
 
 from contextlib import contextmanager
 
-from google3.third_party.R.tools.rfmt.formatter import base
-from google3.third_party.R.tools.rfmt.formatter import blocks
-from google3.third_party.R.tools.rfmt.formatter import format_policy
-from google3.third_party.R.tools.rfmt.formatter import r_language
+import base
+import blocks
+import format_policy
+import r_language
 
 _options = base.Options()  # Shorthand for convenient access
 

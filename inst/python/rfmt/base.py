@@ -26,6 +26,9 @@ class Error(Exception):
     super(Error, self).__init__()
     self.msg = msg
 
+  def __str__(self):
+    return self.msg
+
 
 class Options(object):
   """Singleton class holding global options for the formatter."""

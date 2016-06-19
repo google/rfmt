@@ -1,0 +1,17 @@
+Package: rfmt
+Version: 1.0
+Date: 2016-01-01
+Title: Formatting R source code
+Authors@R: c(
+  person("Phillip", "Yelland", role = c("aut", "cre"),
+         email = "phillip.yelland@gmail.com"),
+  person("Jim", "Hester", role = c("ctb"),
+         email = "james.f.hester@gmail.com")
+  )
+Depends:
+Suggests:
+    knitr
+Description: Package and standalone tool for formatting R source code.
+License: Apache 2.0
+VignetteBuilder: knitr
+RoxygenNote: 5.0.1

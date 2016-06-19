@@ -26,8 +26,8 @@ import cStringIO as StringIO
 import os
 import ply.yacc as yacc
 
-from formatter import base
-from formatter import rparsetab
+import base
+import rparsetab
 
 
 class _RStream(object):
@@ -381,6 +381,19 @@ class _RTokenizer(object):
     s = [c]
     while True:
       c = self.stream.GetChar()
+      # Special case simple package qualifications "pkg::var" and "pkg:::var";
+      # rendering these as a single token, rather than a binary expression
+      # avoids considerable unpleasantness in formatting.
+      if c == ':':
+        self.stream.Checkpoint()
+        if self.stream.GetChar() == ':':  # Got '::'
+          s += [':'] * 2
+          c = self.stream.GetChar()
+          if c == ':':  # Got ':::'
+            s += [':']
+            c = self.stream.GetChar()
+        else:
+          self.stream.Reset()
       if c == 'R_EOF' or not (c.isalnum() or c == '.' or c == '_'):
         self.stream.UnGetChar()
         txt = ''.join(s)
@@ -675,7 +688,7 @@ def ParseNode(typename, field_names, subnode_indexes=None):
       NodeTypeError: the type name provided was unknown.
     """
     if typename not in _known_parse_node_types:
-      raise NodeTypeError('"%s" is not a known node type' %
+      raise NodeTypeError('"%s" is not a known node type' % 
                           typename)
     return typename == node.__class__.__name__
 
@@ -696,10 +709,10 @@ def ParseNode(typename, field_names, subnode_indexes=None):
     unknown_types = set(typenames).difference(_known_parse_node_types)
     if unknown_types:
       if len(unknown_types) == 1:
-        raise NodeTypeError('"%s" is not a known node type' %
+        raise NodeTypeError('"%s" is not a known node type' % 
                             unknown_types[0])
       else:
-        raise NodeTypeError('%s are not known node types' %
+        raise NodeTypeError('%s are not known node types' % 
                             ', '.join('"%s"' % t for t in unknown_types))
     return node.__class__.__name__ in typenames
 
