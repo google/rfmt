@@ -103,7 +103,7 @@ class TextBlock(LayoutBlock):
     if span >= _options.m1:
       s = support.Solution([0], [span],
                            [(span - _options.m0) * _options.c0 +
-                            (span - _options.m1) * _options.m1],
+                            (span - _options.m1) * _options.c1],
                            [_options.c0 + _options.c1], [layout])
     elif span >= _options.m0:
       s = support.Solution([0, _options.m1 - span], [span] * 2,
